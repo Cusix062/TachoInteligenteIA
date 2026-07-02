@@ -12,25 +12,213 @@ import io
 import time
 import sys
 
-matplotlib.style.use('ggplot')
+matplotlib.style.use('dark_background')
 st.set_page_config(page_title="Tacho Inteligente", layout="wide", page_icon="♻️")
 
 CSS = """
 <style>
-.stApp { background: #f0f2f6; }
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+* { font-family: 'Inter', sans-serif; }
+.stApp { 
+    background: linear-gradient(135deg, #0a0a1a 0%, #1a1a2e 50%, #16213e 100%);
+}
 .main .block-container { padding-top: 1.5rem; }
-h1 { color: #2C3E50; font-size: 2rem; }
-h2 { color: #2C3E50; font-size: 1.3rem; }
-.card { background: white; border-radius: 12px; padding: 1.2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 1rem; }
-.result-box { background: white; border-radius: 12px; padding: 1.5rem; box-shadow: 0 2px 12px rgba(0,0,0,0.1); text-align: center; border-left: 5px solid #4ECDC4; }
-.material-badge { font-size: 1.8rem; font-weight: 800; letter-spacing: 2px; }
-.metric-card { background: white; border-radius: 10px; padding: 0.8rem; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
-.metric-card label { font-size: 0.75rem; color: #888; }
-.metric-card .value { font-size: 1.4rem; font-weight: 700; color: #2C3E50; }
-div[data-testid="stButton"] button { border-radius: 8px; font-weight: 600; height: 2.8rem; }
-div[data-testid="stButton"] button[kind="primary"] { background: #2C3E50; color: white; border: none; }
-div[data-testid="stButton"] button[kind="primary"]:hover { background: #1a252f; }
-.stCameraInput { border-radius: 12px; overflow: hidden; }
+h1 { 
+    color: #e0e0e0 !important; 
+    font-size: 2rem !important; 
+    font-weight: 800 !important;
+    background: linear-gradient(90deg, #00d09c, #00b4d8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 0.3rem !important;
+}
+h2 { color: #c0c0d0 !important; font-size: 1.3rem !important; font-weight: 700 !important; }
+h3 { color: #a0a0b8 !important; font-size: 1rem !important; font-weight: 600 !important; }
+p, label, .caption, .stCaption { color: #8888aa !important; }
+
+.card { 
+    background: rgba(30, 30, 60, 0.7);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 16px;
+    padding: 1.5rem;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    margin-bottom: 1.2rem;
+    transition: transform 0.2s ease;
+}
+.card:hover { transform: translateY(-2px); }
+
+.sidebar-card {
+    background: rgba(20, 20, 50, 0.8);
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: 0.8rem;
+}
+
+.result-box {
+    background: rgba(25, 25, 55, 0.8);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 20px;
+    padding: 2rem;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    text-align: center;
+    border-left: 5px solid #00d09c;
+}
+.material-badge { 
+    font-size: 2rem; 
+    font-weight: 800; 
+    letter-spacing: 3px; 
+    text-transform: uppercase;
+}
+.metric-card { 
+    background: rgba(30, 30, 65, 0.7);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 14px; 
+    padding: 1.2rem 0.8rem; 
+    text-align: center; 
+    box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+    transition: all 0.2s ease;
+}
+.metric-card:hover {
+    border-color: rgba(0, 208, 156, 0.3);
+    box-shadow: 0 4px 24px rgba(0, 208, 156, 0.15);
+}
+.metric-card label { font-size: 0.7rem; color: #6666aa; text-transform: uppercase; letter-spacing: 1.5px; }
+.metric-card .value { font-size: 1.6rem; font-weight: 800; color: #e0e0f0; }
+
+div[data-testid="stButton"] button {
+    border-radius: 10px;
+    font-weight: 600;
+    height: 2.8rem;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(30, 30, 60, 0.6);
+    color: #c0c0d0;
+    transition: all 0.2s ease;
+}
+div[data-testid="stButton"] button:hover {
+    background: rgba(50, 50, 90, 0.8);
+    border-color: rgba(0, 208, 156, 0.4);
+    color: white;
+}
+div[data-testid="stButton"] button[kind="primary"] {
+    background: linear-gradient(135deg, #00d09c, #00b4d8);
+    color: white;
+    border: none;
+    font-weight: 700;
+}
+div[data-testid="stButton"] button[kind="primary"]:hover {
+    background: linear-gradient(135deg, #00e8ad, #00c8ee);
+    box-shadow: 0 4px 20px rgba(0, 208, 156, 0.3);
+}
+.stCameraInput {
+    border-radius: 16px;
+    overflow: hidden;
+    border: 2px solid rgba(255,255,255,0.08);
+}
+div[data-testid="stCameraInput"] {
+    border-radius: 16px;
+    overflow: hidden;
+}
+.stCameraInput > div {
+    border: none !important;
+    border-radius: 16px;
+}
+.stSidebar {
+    background: rgba(10, 10, 25, 0.95);
+    border-right: 1px solid rgba(255,255,255,0.05);
+}
+.stSidebar .sidebar-content {
+    background: transparent;
+}
+.stSidebar h2 {
+    color: #e0e0f0 !important;
+}
+div[data-testid="stSidebarNav"] { display: none; }
+section[data-testid="stSidebar"] div[role="radiogroup"] {
+    background: transparent;
+    border: none;
+    gap: 4px;
+}
+section[data-testid="stSidebar"] div[role="radiogroup"] label {
+    background: rgba(20, 20, 50, 0.5);
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 12px;
+    padding: 12px 16px;
+    transition: all 0.2s ease;
+    color: #8888bb;
+}
+section[data-testid="stSidebar"] div[role="radiogroup"] label:hover {
+    background: rgba(30, 30, 70, 0.8);
+    border-color: rgba(0, 208, 156, 0.2);
+    color: #e0e0f0;
+}
+section[data-testid="stSidebar"] div[role="radiogroup"] label[data-checked="true"] {
+    background: rgba(0, 208, 156, 0.15);
+    border-color: rgba(0, 208, 156, 0.4);
+    color: #00d09c;
+}
+.stAlert {
+    border-radius: 12px;
+    border: none;
+}
+div.stSuccess {
+    background: rgba(0, 208, 156, 0.1);
+    border: 1px solid rgba(0, 208, 156, 0.2);
+    color: #00d09c;
+}
+div.stWarning {
+    background: rgba(255, 193, 7, 0.1);
+    border: 1px solid rgba(255, 193, 7, 0.2);
+    color: #ffc107;
+}
+div.stError {
+    background: rgba(220, 53, 69, 0.1);
+    border: 1px solid rgba(220, 53, 69, 0.2);
+    color: #dc3545;
+}
+div.stInfo {
+    background: rgba(0, 180, 216, 0.1);
+    border: 1px solid rgba(0, 180, 216, 0.2);
+    color: #00b4d8;
+}
+div[data-testid="stDataFrame"] {
+    border-radius: 12px;
+    overflow: hidden;
+}
+div[data-testid="stDataFrame"] table {
+    background: rgba(20, 20, 50, 0.5);
+}
+div[data-testid="stDataFrame"] th {
+    background: rgba(0, 208, 156, 0.15);
+    color: #c0c0e0;
+    font-weight: 600;
+}
+div[data-testid="stDataFrame"] td {
+    color: #a0a0c0;
+    background: transparent;
+}
+hr {
+    border-color: rgba(255,255,255,0.05);
+    margin: 1.5rem 0;
+}
+div[data-testid="stDownloadButton"] button {
+    background: rgba(30, 30, 60, 0.6);
+    border: 1px solid rgba(0, 208, 156, 0.3);
+    color: #00d09c;
+}
+div[data-testid="stDownloadButton"] button:hover {
+    background: rgba(0, 208, 156, 0.15);
+    border-color: #00d09c;
+}
+.stSpinner {
+    color: #00d09c !important;
+}
+.stSpinner > div {
+    border-color: #00d09c transparent transparent transparent !important;
+}
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
@@ -40,8 +228,8 @@ CSV_PATH = "registros.csv"
 CLASSES = ["glass", "metal", "paper", "plastic", "trash"]
 NAMES_ES = {"glass": "Vidrio", "metal": "Metal", "paper": "Papel", "plastic": "Plástico", "trash": "Desecho"}
 ICONS = {"glass": "🥃", "metal": "🔩", "paper": "📄", "plastic": "🧴", "trash": "🗑️"}
-COLORS = {"glass": "#4ECDC4", "metal": "#95E1D3", "paper": "#F38181", "plastic": "#FFE156", "trash": "#AA96DA"}
-BG_COLORS = {"glass": "#E8F8F5", "metal": "#F0FDF9", "paper": "#FEF0EF", "plastic": "#FFFBE6", "trash": "#F5F0FF"}
+COLORS = {"glass": "#00d09c", "metal": "#00b4d8", "paper": "#f77f7f", "plastic": "#ffd93d", "trash": "#b388ff"}
+BG_COLORS = {"glass": "rgba(0,208,156,0.08)", "metal": "rgba(0,180,216,0.08)", "paper": "rgba(247,127,127,0.08)", "plastic": "rgba(255,217,61,0.08)", "trash": "rgba(179,136,255,0.08)"}
 
 def load_model_lazy():
     if not os.path.exists(MODEL_PATH):
@@ -87,16 +275,22 @@ for key in ["cam_on", "captura_img", "result", "saved"]:
         st.session_state[key] = False if key in ["cam_on", "saved"] else None
 
 # ---------- NAV ----------
-st.sidebar.markdown("<h2 style='text-align:center;color:#2C3E50;'>♻️ Tacho<br>Inteligente</h2>", unsafe_allow_html=True)
+st.sidebar.markdown("""
+<div style='text-align:center;padding:10px 0'>
+    <div style='font-size:2.5rem;margin-bottom:5px'>♻️</div>
+    <div style='font-size:1.2rem;font-weight:800;background:linear-gradient(90deg,#00d09c,#00b4d8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;'>Tacho Inteligente</div>
+    <div style='font-size:0.7rem;color:#5555aa;margin-top:2px'>IA para reciclaje</div>
+</div>
+""", unsafe_allow_html=True)
 st.sidebar.markdown("---")
 pagina = st.sidebar.radio("", ["📷 Clasificar", "📊 Dashboard"], label_visibility="collapsed")
 st.sidebar.markdown("---")
-st.sidebar.caption("IA para reciclaje")
+st.sidebar.markdown("<div style='font-size:0.65rem;color:#444477;text-align:center;padding:10px'>Hecho con TensorFlow + Streamlit</div>", unsafe_allow_html=True)
 
 # ===================== CLASIFICAR =====================
 def pagina_clasificar():
-    st.markdown("<h1>📷 Clasificar Residuo</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='color:#666;margin-top:-10px'>Captura un residuo con la cámara y la IA lo identificará</p>", unsafe_allow_html=True)
+    st.markdown("<h1>Clasificar Residuo</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#6666aa;margin-top:-10px;margin-bottom:20px'>Captura un residuo con la cámara y la IA lo identificará al instante</p>", unsafe_allow_html=True)
 
     c1, c2 = st.columns([3, 2])
 
@@ -117,9 +311,9 @@ def pagina_clasificar():
                     st.rerun()
             with col_b:
                 if st.session_state.captura_img is not None and st.session_state.result is None:
-                    st.caption("Listo para clasificar")
+                    st.caption("📸 Listo para clasificar")
                 elif st.session_state.result is not None:
-                    st.caption("Resultado listo")
+                    st.caption("✅ Resultado listo")
 
             st.caption("Enfoca el residuo y presiona el botón circular 📸")
             img_data = st.camera_input("", key="cam_feed")
@@ -145,7 +339,7 @@ def pagina_clasificar():
 
     with c2:
         st.markdown("<div class='card'>", unsafe_allow_html=True)
-        st.markdown("### Resultado")
+        st.markdown("<div style='font-size:0.8rem;color:#6666aa;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px'>Resultado</div>", unsafe_allow_html=True)
         if st.session_state.result is None:
             if not st.session_state.cam_on:
                 st.info("👆 Activa la cámara")
@@ -162,12 +356,12 @@ def pagina_clasificar():
 
             st.markdown(f"""
             <div class='result-box' style='border-left-color:{clr};background:{bg}'>
-                <div style='font-size:3rem'>{icono}</div>
+                <div style='font-size:3.5rem;margin-bottom:5px'>{icono}</div>
                 <div class='material-badge' style='color:{clr}'>{nombre_es}</div>
-                <div style='color:#999;text-transform:uppercase;font-size:0.8rem;letter-spacing:2px'>{cat}</div>
-                <div style='margin:15px 0'>
-                    <div style='font-size:0.8rem;color:#888'>Confianza</div>
-                    <div style='font-size:2rem;font-weight:800;color:{clr}'>{conf:.1f}%</div>
+                <div style='color:#5555aa;text-transform:uppercase;font-size:0.75rem;letter-spacing:2px;margin-top:4px'>{cat}</div>
+                <div style='margin:18px 0'>
+                    <div style='font-size:0.75rem;color:#5555aa;text-transform:uppercase;letter-spacing:1px'>Confianza</div>
+                    <div style='font-size:2.2rem;font-weight:800;color:{clr}'>{conf:.1f}%</div>
                 </div>
             </div>
             """, unsafe_allow_html=True)
@@ -189,7 +383,7 @@ def pagina_clasificar():
         st.markdown("</div>", unsafe_allow_html=True)
 
     st.divider()
-    st.markdown("### 📋 Últimos registros")
+    st.markdown("<div style='font-size:1rem;font-weight:600;color:#c0c0e0;margin-bottom:10px'>📋 Últimos registros</div>", unsafe_allow_html=True)
     df = cargar_datos()
     if len(df) > 0:
         ult = df.tail(5).iloc[::-1][["fecha", "categoria", "confianza"]].copy()
@@ -203,10 +397,12 @@ def pagina_clasificar():
 
 # ===================== DASHBOARD =====================
 def pagina_dashboard():
-    st.markdown("<h1>📊 Dashboard de Reciclaje</h1>", unsafe_allow_html=True)
+    st.markdown("<h1>Dashboard de Reciclaje</h1>", unsafe_allow_html=True)
     df = cargar_datos()
     if len(df) == 0:
+        st.markdown("<div class='card' style='text-align:center;padding:3rem'>", unsafe_allow_html=True)
         st.warning("No hay registros. Clasifica residuos en la sección 📷 Clasificar")
+        st.markdown("</div>", unsafe_allow_html=True)
         return
 
     total = len(df)
@@ -230,52 +426,68 @@ def pagina_dashboard():
 
     with ca:
         st.markdown("<div class='card'>", unsafe_allow_html=True)
-        st.markdown("### Residuos por Categoría")
+        st.markdown("<div style='font-size:0.9rem;font-weight:600;color:#c0c0e0;margin-bottom:10px'>Residuos por Categoría</div>", unsafe_allow_html=True)
         conteo = df["categoria"].value_counts()
         fig, ax = plt.subplots(figsize=(8, 4))
+        fig.patch.set_alpha(0)
+        ax.set_facecolor('none')
         colores_lista = [COLORS.get(c, "#888") for c in conteo.index]
-        bars = ax.bar(conteo.index, conteo.values, color=colores_lista, edgecolor="white", linewidth=0.5, width=0.6)
+        bars = ax.bar(conteo.index, conteo.values, color=colores_lista, edgecolor="none", width=0.6, alpha=0.9)
         for b, v in zip(bars, conteo.values):
-            ax.text(b.get_x()+b.get_width()/2, b.get_height()+0.5, str(v), ha="center", fontweight="bold", fontsize=12)
-        ax.set_ylabel("Cantidad")
-        ax.set_xticklabels([NAMES_ES.get(c,c) for c in conteo.index])
+            ax.text(b.get_x()+b.get_width()/2, b.get_height()+0.5, str(v), ha="center", fontweight="bold", fontsize=13, color="#c0c0e0")
+        ax.set_ylabel("Cantidad", color="#6666aa")
+        ax.set_xticklabels([NAMES_ES.get(c,c) for c in conteo.index], color="#8888bb")
+        ax.tick_params(colors="#6666aa")
+        for spine in ax.spines.values():
+            spine.set_color("rgba(255,255,255,0.05)")
+        ax.yaxis.grid(True, alpha=0.1, color="#ffffff")
         fig.tight_layout()
         st.pyplot(fig)
         st.markdown("</div>", unsafe_allow_html=True)
 
     with cb:
         st.markdown("<div class='card'>", unsafe_allow_html=True)
-        st.markdown("### Distribución")
+        st.markdown("<div style='font-size:0.9rem;font-weight:600;color:#c0c0e0;margin-bottom:10px'>Distribución</div>", unsafe_allow_html=True)
         fig2, ax2 = plt.subplots(figsize=(8, 4))
+        fig2.patch.set_alpha(0)
+        ax2.set_facecolor('none')
         colores_pie = [COLORS.get(c, "#888") for c in conteo.index]
         wedges, texts, autotexts = ax2.pie(
             conteo.values, labels=[NAMES_ES.get(c,c) for c in conteo.index],
             autopct="%1.1f%%", colors=colores_pie, startangle=90,
-            wedgeprops={"edgecolor":"white","linewidth":1}
+            wedgeprops={"edgecolor":"none","linewidth":0},
+            textprops={'color': '#c0c0e0', 'fontweight': 'bold', 'fontsize': 11}
         )
         for at in autotexts:
             at.set_fontweight("bold")
             at.set_fontsize(11)
+            at.set_color("#1a1a2e")
         ax2.axis("equal")
         fig2.tight_layout()
         st.pyplot(fig2)
         st.markdown("</div>", unsafe_allow_html=True)
 
     st.markdown("<div class='card'>", unsafe_allow_html=True)
-    st.markdown("### Tendencia Temporal")
+    st.markdown("<div style='font-size:0.9rem;font-weight:600;color:#c0c0e0;margin-bottom:10px'>Tendencia Temporal</div>", unsafe_allow_html=True)
     trend = df.groupby("dia").size().reset_index(name="cantidad")
     fig3, ax3 = plt.subplots(figsize=(12, 3.5))
-    ax3.fill_between(range(len(trend)), trend["cantidad"], alpha=0.25, color="#4ECDC4")
-    ax3.plot(range(len(trend)), trend["cantidad"], marker="o", color="#2C3E50", linewidth=2.5, markersize=7)
+    fig3.patch.set_alpha(0)
+    ax3.set_facecolor('none')
+    ax3.fill_between(range(len(trend)), trend["cantidad"], alpha=0.2, color="#00d09c")
+    ax3.plot(range(len(trend)), trend["cantidad"], marker="o", color="#00b4d8", linewidth=2.5, markersize=7, markerfacecolor="#00d09c", markeredgecolor="none")
     ax3.set_xticks(range(len(trend)))
-    ax3.set_xticklabels(trend["dia"].astype(str), rotation=45, ha="right")
-    ax3.set_ylabel("Registros")
+    ax3.set_xticklabels(trend["dia"].astype(str), rotation=45, ha="right", color="#8888bb")
+    ax3.set_ylabel("Registros", color="#6666aa")
+    ax3.tick_params(colors="#6666aa")
+    for spine in ax3.spines.values():
+        spine.set_color("rgba(255,255,255,0.05)")
+    ax3.yaxis.grid(True, alpha=0.1, color="#ffffff")
     fig3.tight_layout()
     st.pyplot(fig3)
     st.markdown("</div>", unsafe_allow_html=True)
 
     st.markdown("<div class='card'>", unsafe_allow_html=True)
-    st.markdown("### Todos los Registros")
+    st.markdown("<div style='font-size:0.9rem;font-weight:600;color:#c0c0e0;margin-bottom:10px'>Todos los Registros</div>", unsafe_allow_html=True)
     show = df[["fecha", "categoria", "confianza"]].sort_values("fecha", ascending=False).copy()
     show["categoria"] = show["categoria"].map(lambda c: f"{ICONS.get(c,'')} {NAMES_ES.get(c,c)}")
     show["confianza"] = show["confianza"].apply(lambda x: f"{x:.1f}%")
