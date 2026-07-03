@@ -11,6 +11,8 @@ from PIL import Image
 import io
 import time
 import sys
+import requests
+import json
 
 matplotlib.style.use('dark_background')
 st.set_page_config(page_title="Tacho Inteligente", layout="wide", page_icon="♻️")
@@ -48,14 +50,6 @@ p, label, .caption, .stCaption { color: #8888aa !important; }
     transition: transform 0.2s ease;
 }
 .card:hover { transform: translateY(-2px); }
-
-.sidebar-card {
-    background: rgba(20, 20, 50, 0.8);
-    border: 1px solid rgba(255,255,255,0.05);
-    border-radius: 12px;
-    padding: 1rem;
-    margin-bottom: 0.8rem;
-}
 
 .result-box {
     background: rgba(25, 25, 55, 0.8);
@@ -231,6 +225,40 @@ ICONS = {"glass": "🥃", "metal": "🔩", "paper": "📄", "plastic": "🧴", "
 COLORS = {"glass": "#00d09c", "metal": "#00b4d8", "paper": "#f77f7f", "plastic": "#ffd93d", "trash": "#b388ff"}
 BG_COLORS = {"glass": "rgba(0,208,156,0.08)", "metal": "rgba(0,180,216,0.08)", "paper": "rgba(247,127,127,0.08)", "plastic": "rgba(255,217,61,0.08)", "trash": "rgba(179,136,255,0.08)"}
 
+API_KEY = "a4a-rLkO16xPuGROqeunvaebwxXaMdazS7Z3"
+API_URL = "https://api4ai.cloud/general-cls/v1/results"
+
+# ImageNet class -> (waste_category, confidence_weight)
+IMAGENET_MAP = {
+    "beer glass": ("glass", 1.0), "wine bottle": ("glass", 0.8),
+    "beer bottle": ("glass", 0.8), "pop bottle": ("glass", 0.3),
+    "cocktail shaker": ("glass", 0.6), "vase": ("glass", 0.6),
+    "jar": ("glass", 0.7), "goblet": ("glass", 1.0),
+    "wine glass": ("glass", 1.0), "cup": ("glass", 0.3),
+    "bottle": ("glass", 0.5), "water bottle": ("glass", 0.2),
+    "can": ("metal", 1.0), "milk can": ("metal", 1.0),
+    "tin can": ("metal", 1.0), "beer can": ("metal", 1.0),
+    "screw": ("metal", 0.8), "chain": ("metal", 0.7),
+    "padlock": ("metal", 0.8), "key": ("metal", 0.8),
+    "paper towel": ("paper", 1.0), "toilet tissue": ("paper", 1.0),
+    "envelope": ("paper", 1.0), "cardboard": ("paper", 0.9),
+    "carton": ("paper", 0.7), "box": ("paper", 0.4),
+    "book": ("paper", 0.7), "magazine": ("paper", 0.9),
+    "newspaper": ("paper", 1.0), "napkin": ("paper", 1.0),
+    "paperback": ("paper", 0.7), "notebook": ("paper", 0.6),
+    "plastic bag": ("plastic", 1.0), "grocery bag": ("plastic", 0.7),
+    "garbage bag": ("plastic", 0.6), "bottlecap": ("plastic", 0.5),
+    "bucket": ("plastic", 0.5), "straw": ("plastic", 0.8),
+    "shampoo": ("plastic", 0.7), "toothbrush": ("plastic", 0.8),
+    "toothpaste": ("plastic", 0.6), "balloon": ("plastic", 0.6),
+    "soap dispenser": ("plastic", 0.4), "spatula": ("plastic", 0.3),
+    "trash can": ("trash", 1.0), "garbage can": ("trash", 1.0),
+    "dustbin": ("trash", 1.0), "cigarette": ("trash", 1.0),
+    "cigarette butt": ("trash", 1.0), "diaper": ("trash", 0.9),
+    "ashcan": ("trash", 1.0), "sponge": ("trash", 0.3),
+    "rubber eraser": ("trash", 0.3), "face powder": ("trash", 0.2),
+}
+
 def load_model_lazy():
     if not os.path.exists(MODEL_PATH):
         return None
@@ -244,7 +272,7 @@ def get_model():
         _model = load_model_lazy()
     return _model
 
-def predecir(imagen_pil):
+def predecir_local(imagen_pil):
     modelo = get_model()
     if modelo is None:
         return None, 0
@@ -254,6 +282,45 @@ def predecir(imagen_pil):
     pred = modelo.predict(arr, verbose=0)
     idx = np.argmax(pred[0])
     return CLASSES[idx], float(pred[0][idx] * 100)
+
+def predecir_api(imagen_pil):
+    buf = io.BytesIO()
+    imagen_pil.save(buf, format="JPEG")
+    buf.seek(0)
+    try:
+        resp = requests.post(
+            API_URL,
+            headers={"X-API-KEY": API_KEY},
+            files={"image": ("image.jpg", buf, "image/jpeg")},
+            timeout=15
+        )
+        if resp.status_code != 200:
+            return None, 0
+        data = resp.json()
+        classes = data["results"][0]["entities"][0]["classes"]
+        scores = {}
+        for cls, score in classes.items():
+            if cls in IMAGENET_MAP:
+                cat, weight = IMAGENET_MAP[cls]
+                scores[cat] = scores.get(cat, 0) + score * weight
+            elif "bottle" in cls or "glass" in cls:
+                scores["glass"] = scores.get("glass", 0) + score * 0.3
+            elif "can" in cls or "metal" in cls or "tin" in cls:
+                scores["metal"] = scores.get("metal", 0) + score * 0.3
+            elif "paper" in cls or "cardboard" in cls or "carton" in cls:
+                scores["paper"] = scores.get("paper", 0) + score * 0.3
+            elif "plastic" in cls or "bag" in cls:
+                scores["plastic"] = scores.get("plastic", 0) + score * 0.3
+            elif "trash" in cls or "garbage" in cls or "waste" in cls:
+                scores["trash"] = scores.get("trash", 0) + score * 0.3
+        if not scores:
+            top_cls = max(classes, key=classes.get)
+            return "trash", min(classes[top_cls] * 100, 99)
+        mejor_cat = max(scores, key=scores.get)
+        confianza = min(scores[mejor_cat] * 100, 99)
+        return mejor_cat, confianza
+    except:
+        return None, 0
 
 def guardar_registro(categoria, confianza):
     with open(CSV_PATH, "a", newline="", encoding="utf-8") as f:
@@ -270,9 +337,12 @@ def cargar_datos():
     df["hora"] = df["fecha"].dt.hour
     return df
 
-for key in ["cam_on", "captura_img", "result", "saved"]:
+for key in ["cam_on", "captura_img", "result", "saved", "use_api"]:
     if key not in st.session_state:
-        st.session_state[key] = False if key in ["cam_on", "saved"] else None
+        if key == "use_api":
+            st.session_state[key] = not os.path.exists(MODEL_PATH)
+        else:
+            st.session_state[key] = False if key in ["cam_on", "saved"] else None
 
 # ---------- NAV ----------
 st.sidebar.markdown("""
@@ -285,7 +355,21 @@ st.sidebar.markdown("""
 st.sidebar.markdown("---")
 pagina = st.sidebar.radio("", ["📷 Clasificar", "📊 Dashboard"], label_visibility="collapsed")
 st.sidebar.markdown("---")
-st.sidebar.markdown("<div style='font-size:0.65rem;color:#444477;text-align:center;padding:10px'>Hecho con TensorFlow + Streamlit</div>", unsafe_allow_html=True)
+
+modelo_disponible = os.path.exists(MODEL_PATH)
+if modelo_disponible:
+    use_api = st.sidebar.toggle("☁️ Usar API en la nube", value=st.session_state.use_api)
+    if use_api != st.session_state.use_api:
+        st.session_state.use_api = use_api
+        st.rerun()
+    modo = "API ☁️" if st.session_state.use_api else "Local 🖥️"
+else:
+    st.session_state.use_api = True
+    modo = "API ☁️"
+    st.sidebar.info("📡 Modo API en la nube activado")
+
+st.sidebar.markdown(f"<div style='font-size:0.7rem;color:#5555aa;text-align:center;padding:5px'>Modo: {modo}</div>", unsafe_allow_html=True)
+st.sidebar.markdown("<div style='font-size:0.65rem;color:#444477;text-align:center;padding:10px'>API4AI + Streamlit</div>", unsafe_allow_html=True)
 
 # ===================== CLASIFICAR =====================
 def pagina_clasificar():
@@ -326,11 +410,14 @@ def pagina_clasificar():
             st.image(st.session_state.captura_img, width=280, caption="Captura")
             if st.session_state.result is None:
                 if st.button("🔍 Clasificar material", type="primary", use_container_width=True):
-                    with st.spinner("Cargando modelo y analizando..."):
-                        time.sleep(0.5)
-                        cat, conf = predecir(st.session_state.captura_img)
+                    with st.spinner("Analizando..."):
+                        time.sleep(0.3)
+                        if st.session_state.use_api:
+                            cat, conf = predecir_api(st.session_state.captura_img)
+                        else:
+                            cat, conf = predecir_local(st.session_state.captura_img)
                     if cat is None:
-                        st.error("Modelo no encontrado. Ejecuta 'entrenar.py' primero.")
+                        st.error("No se pudo clasificar. Intenta de nuevo.")
                     else:
                         st.session_state.result = (cat, conf)
                         st.session_state.saved = False
